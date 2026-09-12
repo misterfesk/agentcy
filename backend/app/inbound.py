@@ -155,3 +155,44 @@ async def _resolve_thread(
     session.add(thread)
     await session.flush()
     return thread
+
+
+async def load_thread_history(
+    session_factory: SessionFactory,
+    external_thread_id: str,
+    limit: int = 12,
+) -> list[tuple[str, str]]:
+    """Return bounded persisted conversation context in chronological order."""
+    async with session_factory() as session:
+        thread = await session.scalar(
+            select(Thread).where(Thread.external_thread_id == external_thread_id)
+        )
+        if thread is None:
+            return []
+        messages = list(
+            (
+                await session.scalars(
+                    select(Message)
+                    .where(Message.thread_id == thread.id)
+                    .order_by(Message.created_at.desc())
+                    .limit(limit)
+                )
+            ).all()
+        )
+    return [(message.direction, message.content) for message in reversed(messages)]
+
+
+async def persist_outbound_reply(
+    session_factory: SessionFactory,
+    external_thread_id: str,
+    content: str,
+) -> None:
+    """Persist a sent support reply so the next turn has real conversation context."""
+    async with session_factory() as session:
+        thread = await session.scalar(
+            select(Thread).where(Thread.external_thread_id == external_thread_id)
+        )
+        if thread is None:
+            raise RuntimeError("cannot persist an outbound reply without a thread")
+        session.add(Message(thread_id=thread.id, direction="outbound", content=content))
+        await session.commit()

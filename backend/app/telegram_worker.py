@@ -8,7 +8,13 @@ import httpx
 
 from app.core.config import get_settings
 from app.customer_support import generate_customer_support_reply
-from app.inbound import TelegramInboundPayload, create_session_factory, persist_telegram_inbound
+from app.inbound import (
+    TelegramInboundPayload,
+    create_session_factory,
+    load_thread_history,
+    persist_outbound_reply,
+    persist_telegram_inbound,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -48,16 +54,23 @@ async def main() -> None:
                 result = await persist_telegram_inbound(session_factory, payload)
                 if not result.accepted:
                     continue
+                history = await load_thread_history(session_factory, payload.external_thread_id)
                 reply = await generate_customer_support_reply(
                     settings,
                     payload.text,
                     result.route,
+                    history,
                 )
                 sent = await client.post(
                     f"{api_url}/sendMessage",
                     json={"chat_id": chat["id"], "text": reply},
                 )
                 sent.raise_for_status()
+                await persist_outbound_reply(
+                    session_factory,
+                    payload.external_thread_id,
+                    reply,
+                )
                 logger.info(
                     "accepted Telegram message %s on %s route",
                     message["message_id"],
