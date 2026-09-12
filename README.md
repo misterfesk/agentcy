@@ -4,76 +4,6 @@ Agentcy is an open-source operations workspace for a marketing and creative agen
 
 > **MVP scope:** this is a single-agency deployment, not a multi-tenant SaaS product. Telegram and Discord are active integrations. Meta adapters remain deliberately gated behind `ENABLE_META=false` until business verification is complete.
 
-## What it does
-
-- Accepts Telegram messages from anyone; `/start` creates a lead identity.
-- Stores clients, channel identities, threads, inbound/outbound messages, todos, and agent activity in PostgreSQL.
-- Routes new leads to customer support; clients with `active`, `paused`, or `churned` status route to the dedicated-account path.
-- Uses Nebius Token Factory's OpenAI-compatible API with `zai-org/GLM-5.3-Flash` for customer-support replies.
-- Supplies the support agent with the latest persisted conversation history so follow-up messages do not restart the conversation.
-- Runs a Discord operations workspace for command-center, employee work, escalations, approvals, agent activity, CEO briefings, and operational alerts.
-- Provides a React dashboard served behind Caddy.
-- Keeps Meta integration configuration in place but disabled by default.
-
-## Architecture
-
-```text
-Telegram / Discord
-        │
-        ▼
-  channel worker
-        │  normalize + deduplicate
-        ▼
-FastAPI application ───────────────► PostgreSQL
-        │                              clients, identities, threads,
-        │                              messages, todos, agent runs
-        ├────────► Nebius / GLM-5.3-Flash
-        │          contextual support response
-        ▼
-     Redis
-  rate-limit / queue utility
-        │
-        ▼
-React dashboard ◄── Caddy reverse proxy
-```
-
-The Telegram worker never sends model output without first persisting the inbound message. After a successful send, it persists the outbound reply as well. The next response receives bounded recent thread history.
-
-Read [ARCHITECTURE.md](ARCHITECTURE.md) for the intended agent stack and [DECISIONS.md](DECISIONS.md) for MVP trade-offs.
-
-## What an agency needs to provide
-
-Before deploying Agentcy for a real agency, gather these items:
-
-1. **Agency profile**
-   - agency name, website, location/time zone
-   - services offered and concise service descriptions
-   - approved tone of voice
-   - FAQs, working hours, response expectations, escalation rules
-   - any topics the agent must never answer autonomously: pricing, contracts, guarantees, timelines, legal claims, etc.
-
-2. **Team and workflow map**
-   - employees, roles, responsibilities, and stable Discord user IDs
-   - which kinds of requests go to which role
-   - who approves client-facing replies, scope changes, refunds, and commitments
-   - daily digest recipients and reminder schedule
-
-3. **Client and project data**
-   - client names and lifecycle status: `lead`, `active`, `paused`, or `churned`
-   - current projects, open tickets, key contacts, and approved history import
-   - clear definition of when a lead becomes an active client
-
-4. **Channel credentials**
-   - Telegram bot token from BotFather
-   - Discord application/bot token and guild ID
-   - Nebius Token Factory API key
-   - optionally later: Meta app secret, webhook verification token, access token, and the relevant WhatsApp/Instagram/Facebook IDs
-
-5. **Deployment basics**
-   - a Linux host with Docker Compose v2, a DNS name, and TLS-capable reverse proxy access
-   - backups for the PostgreSQL volume
-   - a private secrets-management process; do not commit credentials into Git
-
 ## Quick start (local development)
 
 ### Prerequisites
@@ -162,6 +92,76 @@ docker compose logs --tail=100 telegram-worker
 ```
 
 That fallback means the provider call failed or returned no customer-facing content; it is intentionally safe rather than pretending an AI answer was generated.
+
+## What it does
+
+- Accepts Telegram messages from anyone; `/start` creates a lead identity.
+- Stores clients, channel identities, threads, inbound/outbound messages, todos, and agent activity in PostgreSQL.
+- Routes new leads to customer support; clients with `active`, `paused`, or `churned` status route to the dedicated-account path.
+- Uses Nebius Token Factory's OpenAI-compatible API with `zai-org/GLM-5.3-Flash` for customer-support replies.
+- Supplies the support agent with the latest persisted conversation history so follow-up messages do not restart the conversation.
+- Runs a Discord operations workspace for command-center, employee work, escalations, approvals, agent activity, CEO briefings, and operational alerts.
+- Provides a React dashboard served behind Caddy.
+- Keeps Meta integration configuration in place but disabled by default.
+
+## Architecture
+
+```text
+Telegram / Discord
+        │
+        ▼
+  channel worker
+        │  normalize + deduplicate
+        ▼
+FastAPI application ───────────────► PostgreSQL
+        │                              clients, identities, threads,
+        │                              messages, todos, agent runs
+        ├────────► Nebius / GLM-5.3-Flash
+        │          contextual support response
+        ▼
+     Redis
+  rate-limit / queue utility
+        │
+        ▼
+React dashboard ◄── Caddy reverse proxy
+```
+
+The Telegram worker never sends model output without first persisting the inbound message. After a successful send, it persists the outbound reply as well. The next response receives bounded recent thread history.
+
+Read [ARCHITECTURE.md](ARCHITECTURE.md) for the intended agent stack and [DECISIONS.md](DECISIONS.md) for MVP trade-offs.
+
+## What an agency needs to provide
+
+Before deploying Agentcy for a real agency, gather these items:
+
+1. **Agency profile**
+   - agency name, website, location/time zone
+   - services offered and concise service descriptions
+   - approved tone of voice
+   - FAQs, working hours, response expectations, escalation rules
+   - any topics the agent must never answer autonomously: pricing, contracts, guarantees, timelines, legal claims, etc.
+
+2. **Team and workflow map**
+   - employees, roles, responsibilities, and stable Discord user IDs
+   - which kinds of requests go to which role
+   - who approves client-facing replies, scope changes, refunds, and commitments
+   - daily digest recipients and reminder schedule
+
+3. **Client and project data**
+   - client names and lifecycle status: `lead`, `active`, `paused`, or `churned`
+   - current projects, open tickets, key contacts, and approved history import
+   - clear definition of when a lead becomes an active client
+
+4. **Channel credentials**
+   - Telegram bot token from BotFather
+   - Discord application/bot token and guild ID
+   - Nebius Token Factory API key
+   - optionally later: Meta app secret, webhook verification token, access token, and the relevant WhatsApp/Instagram/Facebook IDs
+
+5. **Deployment basics**
+   - a Linux host with Docker Compose v2, a DNS name, and TLS-capable reverse proxy access
+   - backups for the PostgreSQL volume
+   - a private secrets-management process; do not commit credentials into Git
 
 ## Development and verification
 
