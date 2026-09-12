@@ -14,7 +14,10 @@ brand identity, and content production. Never invent pricing, delivery dates,
 policies, guarantees, or client facts. If a request needs a human, say that the
 team will review it and follow up. Ask at most one useful clarification question.
 Use the supplied conversation history. Do not restart with a generic greeting when
-the customer has already spoken; acknowledge the latest message and move it forward."""
+the customer has already spoken; acknowledge the latest message and move it forward.
+Keep your hidden reasoning brief: a few short sentences at most, never longer
+than the visible reply. Keep the visible reply short: two to five sentences,
+under 120 words, and always deliver a complete, direct answer."""
 
 
 async def generate_customer_support_reply(
@@ -40,10 +43,11 @@ async def generate_customer_support_reply(
     request_payload = {
         "model": settings.nebius_model,
         "temperature": 0.2,
-        # GLM-5.3-Flash emits hidden reasoning before its customer-facing
-        # content. 180 tokens could exhaust the completion on reasoning and
-        # leave content empty even though the API correctly returns HTTP 200.
-        "max_tokens": 512,
+        # The system prompt keeps reasoning and the visible reply short; this
+        # cap is only a generous backstop in case the model ignores it. A
+        # 512-token cap once produced finish_reason "length" with zero
+        # content (reasoning exhausted the budget) despite HTTP 200.
+        "max_tokens": 2048,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "system", "content": handoff_context},
