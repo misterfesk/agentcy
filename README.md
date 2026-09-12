@@ -23,6 +23,9 @@ Prerequisites: Python 3.11+, Docker Compose v2.
 
 ```bash
 cp .env.example .env
+python scripts/create_dev_secrets.py
+# Before enabling agent inference, place the Nebius API key in
+# .secrets/nebius_api_key (mode 0600); it is not generated automatically.
 docker compose up --build
 ```
 

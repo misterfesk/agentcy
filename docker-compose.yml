@@ -1,0 +1,151 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: agentcy
+      DATABASE_USER: agentcy
+      DATABASE_PASSWORD_FILE: /run/secrets/postgres_password
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_DB: "0"
+      REDIS_PASSWORD_FILE: /run/secrets/redis_password
+      LLM_PROVIDER: nebius
+      NEBIUS_BASE_URL: https://api.tokenfactory.nebius.com/v1/
+      NEBIUS_MODEL: glm5.3flash
+      NEBIUS_API_KEY_FILE: /run/secrets/nebius_api_key
+    secrets:
+      - postgres_password
+      - redis_password
+      - nebius_api_key
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"
+    user: "1000:1000"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test:
+        ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=2)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  postgres:
+    image: postgres:16-alpine@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685
+    user: "1000:1000"
+    environment:
+      POSTGRES_DB: agentcy
+      POSTGRES_USER: agentcy
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    depends_on:
+      postgres-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agentcy -d agentcy"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  postgres-init:
+    image: postgres:16-alpine@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685
+    user: "0:0"
+    command: ["sh", "-ec", "mkdir -p /var/lib/postgresql/data && chown -R 1000:1000 /var/lib/postgresql/data"]
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    network_mode: none
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+    security_opt:
+      - no-new-privileges:true
+
+  redis-init:
+    image: redis:7-alpine@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
+    user: "0:0"
+    command: ["sh", "-ec", "mkdir -p /data && chown -R 1000:1000 /data"]
+    volumes:
+      - redis-data:/data
+    network_mode: none
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+    security_opt:
+      - no-new-privileges:true
+
+  redis:
+    image: redis:7-alpine@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
+    user: "1000:1000"
+    command:
+      - sh
+      - -ec
+      - |
+        umask 077
+        password="$$(cat /run/secrets/redis_password)"
+        case "$$password" in *[!A-Za-z0-9_-]*|'') echo 'Invalid Redis secret format' >&2; exit 1 ;; esac
+        printf 'appendonly yes\nrequirepass %s\n' "$$password" > /tmp/redis.conf
+        exec redis-server /tmp/redis.conf
+    secrets:
+      - redis_password
+    volumes:
+      - redis-data:/data
+    depends_on:
+      redis-init:
+        condition: service_completed_successfully
+    read_only: true
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test:
+        ["CMD-SHELL", "REDISCLI_AUTH=\"$$(cat /run/secrets/redis_password)\" redis-cli --no-auth-warning --user default --raw ping | grep -qx PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+secrets:
+  postgres_password:
+    file: ${POSTGRES_PASSWORD_FILE:?Set POSTGRES_PASSWORD_FILE in .env}
+  redis_password:
+    file: ${REDIS_PASSWORD_FILE:?Set REDIS_PASSWORD_FILE in .env}
+  nebius_api_key:
+    file: ${NEBIUS_API_KEY_FILE:?Set NEBIUS_API_KEY_FILE in .env}
+
+volumes:
+  postgres-data:
+  redis-data:

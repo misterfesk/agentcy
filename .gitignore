@@ -20,6 +20,7 @@ dist/
 # Local runtime data
 postgres-data/
 redis-data/
+.secrets/
 coverage.xml
 htmlcov/
 
