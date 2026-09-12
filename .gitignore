@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Node / dashboard
+node_modules/
+dist/
+
+# Local runtime data
+postgres-data/
+redis-data/
+coverage.xml
+htmlcov/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
