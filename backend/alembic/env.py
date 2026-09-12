@@ -6,9 +6,13 @@ from sqlalchemy import create_engine, pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncEngine, async_engine_from_config
 
+from app.core.config import Settings
 from app.db.models import Base
 
 config = context.config
+settings = Settings()
+if settings.database_url is not None:
+    config.set_main_option("sqlalchemy.url", settings.database_url)
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 

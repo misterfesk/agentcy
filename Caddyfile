@@ -1,0 +1,19 @@
+:80 {
+    header {
+        -Server
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    }
+
+    @api path /api/*
+    handle @api {
+        uri strip_prefix /api
+        reverse_proxy app:8000
+    }
+
+    handle {
+        reverse_proxy frontend:80
+    }
+}

@@ -43,8 +43,9 @@ class Settings(BaseSettings):
     nebius_base_url: Literal["https://api.tokenfactory.nebius.com/v1/"] = (
         "https://api.tokenfactory.nebius.com/v1/"
     )
-    nebius_model: Literal["glm5.3flash"] = "glm5.3flash"
+    nebius_model: Literal["zai-org/GLM-5.3-Flash"] = "zai-org/GLM-5.3-Flash"
     nebius_api_key_file: Path | None = None
+    telegram_bot_token_file: Path | None = None
 
     @field_validator("database_host", "redis_host")
     @classmethod
@@ -82,6 +83,10 @@ class Settings(BaseSettings):
     @property
     def nebius_api_key(self) -> str | None:
         return self._read_secret(self.nebius_api_key_file)
+
+    @property
+    def telegram_bot_token(self) -> str | None:
+        return self._read_secret(self.telegram_bot_token_file)
 
     @staticmethod
     def _read_secret(path: Path | None) -> str | None:

@@ -10,8 +10,9 @@ RUN python -m venv /opt/venv \
     && useradd --uid 10001 --gid 10001 --create-home agentcy
 
 WORKDIR /app
-COPY pyproject.toml README.md ./
+COPY pyproject.toml README.md alembic.ini ./
 COPY backend/app ./backend/app
+COPY backend/alembic ./backend/alembic
 RUN pip install .
 
 USER agentcy

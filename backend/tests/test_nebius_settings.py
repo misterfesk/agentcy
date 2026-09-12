@@ -19,7 +19,7 @@ def test_settings_reads_nebius_api_key_from_private_file(tmp_path: Path) -> None
 
     assert settings.llm_provider == "nebius"
     assert settings.nebius_base_url == "https://api.tokenfactory.nebius.com/v1/"
-    assert settings.nebius_model == "glm5.3flash"
+    assert settings.nebius_model == "zai-org/GLM-5.3-Flash"
     assert settings.nebius_api_key == "nebius-secret"
 
 
