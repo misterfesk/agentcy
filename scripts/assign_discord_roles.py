@@ -5,7 +5,7 @@ import os
 
 import discord
 
-ROLE_ASSIGNMENTS = {"misterfesk": "CEO", "yoti": "Engineer"}
+ROLE_ASSIGNMENTS = {847392881366401094: "CEO"}
 
 
 def required_environment(name: str) -> str:
@@ -29,34 +29,13 @@ class RoleProvisioner(discord.Client):
             if guild_id is None:
                 raise RuntimeError("DISCORD_HOME_CHANNEL is not a guild channel")
             guild = await self.fetch_guild(guild_id)
-            try:
-                members = [member async for member in guild.fetch_members(limit=None)]
-            except discord.ClientException:
-                members_by_id: dict[int, discord.Member] = {}
-                for channel in await guild.fetch_channels():
-                    if not isinstance(channel, discord.TextChannel):
-                        continue
-                    async for message in channel.history(limit=100):
-                        members_by_id[message.author.id] = await guild.fetch_member(
-                            message.author.id
-                        )
-                members = list(members_by_id.values())
-            print("Observed members:", ", ".join(sorted(member.name for member in members)))
             roles = {role.name: role for role in await guild.fetch_roles()}
-            for username, role_name in ROLE_ASSIGNMENTS.items():
-                matching_members = [
-                    member for member in members if member.name.lower() == username
-                ]
-                if len(matching_members) != 1:
-                    raise RuntimeError(
-                        f"expected one Discord member named {username}, "
-                        f"found {len(matching_members)}"
-                    )
+            for member_id, role_name in ROLE_ASSIGNMENTS.items():
+                member = await guild.fetch_member(member_id)
                 role = roles.get(role_name)
                 if role is None:
                     role = await guild.create_role(name=role_name, reason="Provision Agentcy roles")
                     roles[role_name] = role
-                member = matching_members[0]
                 if role not in member.roles:
                     await member.add_roles(role, reason="Provision Agentcy roles")
                 print(f"Assigned {role_name} to {member.name}")
