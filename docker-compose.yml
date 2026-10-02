@@ -99,9 +99,14 @@ services:
       DATABASE_USER: agentcy
       DATABASE_PASSWORD_FILE: /run/secrets/postgres_password
       TELEGRAM_BOT_TOKEN_FILE: /run/secrets/telegram_bot_token
+      LLM_PROVIDER: nebius
+      NEBIUS_BASE_URL: https://api.tokenfactory.nebius.com/v1/
+      NEBIUS_MODEL: zai-org/GLM-5.3-Flash
+      NEBIUS_API_KEY_FILE: /run/secrets/nebius_api_key
     secrets:
       - postgres_password
       - telegram_bot_token
+      - nebius_api_key
     depends_on:
       migrate:
         condition: service_completed_successfully
