@@ -63,7 +63,7 @@ async def generate_customer_support_reply(
                 json=request_payload,
             )
             response.raise_for_status()
-        content = response.json()["choices"][0]["message"]["content"].strip()
+        content = str(response.json()["choices"][0]["message"]["content"]).strip()
         if not content:
             raise ValueError("Nebius returned an empty customer-facing completion")
         return content[:1200]
